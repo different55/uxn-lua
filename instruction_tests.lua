@@ -1049,8 +1049,6 @@ describe("the uxn instruction", function()
 			})
 
 			assert(cpu.program_stack:len() == 6, "Only fetch shorts")
-			print("PS")
-			cpu.program_stack:debug()
 
 			-- Gets the byte from the next mem slot
 			assert(PS() == 0x13)
