@@ -1,17 +1,16 @@
-# ! This repo is very out of date and I have not kept it up to date with any changes to the spec since January 2022 !
-I have lost interest in this project and am unlikely to update it any time soon. The instruction set itself has changed and I believe there have been lots of changes to various devices in the interim. ROMs compiled since January of 2022 may not run in this emulator
-
 # Uxn-Lua
 
 A port of the [Uxn](https://wiki.xxiivv.com/site/uxntal.html) instruction set and [Varvara](https://wiki.xxiivv.com/site/varvara.html) virtual computer to the Lua language and the Love2D game engine. ~~Is compatible with most ROMs, but runs at a much lower speed for cpu-intensive ROMs.~~
 
 ## Installation
 
+Running this repository as a Love game requires [Love 11+](https://love2d.org/).
+
 Running the unit tests requires [Busted](https://olivinelabs.com/busted/). To run them, simply execute `busted` in the root of the repository.
 
-Running this repository as a Love game requires [Love 11+](https://love2d.org/)
+Running tests or running uxn.lua as a standalone requires [LuaJIT](https://luajit.org/) or a bitwise operations libray such as the standalone [bitwise module](https://bitop.luajit.org/).
 
-Running tests or running uxn.lua as a standalone requires [LuaJIT](https://luajit.org/) or a bitwise operations libray such as the standalone [bitwise module](https://bitop.luajit.org/)
+The standard uxn opcode test can be run with `love . opctest.rom`.
 
 ## Quickstart
 
