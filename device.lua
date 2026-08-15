@@ -1,3 +1,4 @@
+local bit = require("bit")
 local Device = {}
 
 Device.DEBUG_NUM_CALLS = { read = {}, write = {} }

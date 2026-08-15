@@ -1,5 +1,6 @@
 local Device = require("device")
 local uxn = require("uxn")
+local bit = require("bit")
 
 local Uxn = uxn.Uxn
 
