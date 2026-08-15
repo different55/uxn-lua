@@ -1,13 +1,13 @@
-local Uxn = (require "uxn").Uxn
-bit = require "bit"
+local Uxn = (require("uxn")).Uxn
+bit = require("bit")
 
 local band, bor, bxor, bnot = bit.band, bit.bor, bit.bxor, bit.bnot
 local arshift, rshift, lshift = bit.arshift, bit.rshift, bit.lshift
 
-local math = require "math"
-local devices = require "love-devices"
+local math = require("math")
+local devices = require("love-devices")
 
-Device = require "device"
+Device = require("device")
 
 -- Debugging
 --jit.off()
@@ -20,38 +20,38 @@ PADDING = 4
 SCALING = 2
 
 function setupCPU(mem)
-  local cpu = Uxn:new(mem)
-  cpu.ip = 0x0100
+	local cpu = Uxn:new(mem)
+	cpu.ip = 0x0100
 
-  -- Debugging flags
-  cpu.PRINT = false
-  cpu.memory.ERROR_ON_UNINITIALIZED_READ = false
+	-- Debugging flags
+	cpu.PRINT = false
+	cpu.memory.ERROR_ON_UNINITIALIZED_READ = false
 
-  system = cpu:addDevice(0, devices.system)
-  console = cpu:addDevice(1, devices.console)
-  screen = devices.screen(WIDTH, HEIGHT)
-  cpu:addDevice(2, screen)
+	system = cpu:addDevice(0, devices.system)
+	console = cpu:addDevice(1, devices.console)
+	screen = devices.screen(WIDTH, HEIGHT)
+	cpu:addDevice(2, screen)
 
-  controller = cpu:addDevice(8, devices.controller)
-  mouse = cpu:addDevice(9, devices.mouse)
-  file = cpu:addDevice(10, devices.file)
-  cpu:addDevice(11, devices.datetime)
-  return cpu
+	controller = cpu:addDevice(8, devices.controller)
+	mouse = cpu:addDevice(9, devices.mouse)
+	file = cpu:addDevice(10, devices.file)
+	cpu:addDevice(11, devices.datetime)
+	return cpu
 end
 
 function love.load(arg)
-  love.mouse.setVisible(false)
-  love.graphics.setDefaultFilter("nearest", "nearest")
+	love.mouse.setVisible(false)
+	love.graphics.setDefaultFilter("nearest", "nearest")
 
-  --love.graphics.setNewFont("mono.ttf", 14)
-  love.graphics.setBackgroundColor(0,0,0)
-  love.window.setMode((WIDTH * SCALING) + (PADDING * 2), (HEIGHT * SCALING) + (PADDING * 2))
+	--love.graphics.setNewFont("mono.ttf", 14)
+	love.graphics.setBackgroundColor(0, 0, 0)
+	love.window.setMode((WIDTH * SCALING) + (PADDING * 2), (HEIGHT * SCALING) + (PADDING * 2))
 
-  love.keyboard.setKeyRepeat(true)
+	love.keyboard.setKeyRepeat(true)
 
-  -- This is the shader that translates system colours into
-  -- palette colours
-  paletteShader = love.graphics.newShader [[
+	-- This is the shader that translates system colours into
+	-- palette colours
+	paletteShader = love.graphics.newShader([[
     uniform vec3 palette[4];
 
     vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
@@ -61,148 +61,150 @@ function love.load(arg)
 
       return pixel * color;
     }
-  ]]
+  ]])
 
+	local memory = {}
 
-  local memory = {}
+	-- Preload the zero-page
+	for i = 0, 255 do
+		memory[i] = 0
+	end
 
-  -- Preload the zero-page
-  for i = 0, 255 do
-    memory[i] = 0
-  end
+	-- Takes in a filename from the command line, else load boot.rom
+	local data, size = love.filesystem.read("data", arg[1] or "boot.rom")
 
-  -- Takes in a filename from the command line, else load boot.rom
-  local data, size = love.filesystem.read("data", arg[1] or "boot.rom")
+	for i = 1, size do
+		memory[i + 255] = love.data.unpack("B", data, i)
+	end
 
-  for i = 1, size do
-      memory[i + 255] = love.data.unpack("B", data, i)
-  end
+	-- Create a new CPU
+	cpu = setupCPU(memory)
 
-  -- Create a new CPU
-  cpu = setupCPU(memory)
+	-- Execute the initial vector
+	cpu:runUntilBreak()
 
-  -- Execute the initial vector
-  cpu:runUntilBreak()
+	if PROFILE then
+		Device.DEBUG_NUM_CALLS.read = {}
+		Device.DEBUG_NUM_CALLS.write = {}
+		cpu.debug_profile = {}
+		cpu.device_triggers = {}
+		cpu.device_reads = {}
+		cpu.device_writes = {}
 
-  if PROFILE then
-    Device.DEBUG_NUM_CALLS.read = {}
-    Device.DEBUG_NUM_CALLS.write = {}
-    cpu.debug_profile = {}
-    cpu.device_triggers = {}
-    cpu.device_reads = {}
-    cpu.device_writes = {}
-
-    love.profiler = require('cigumo_profile')
-    love.profiler.start()
-  end
+		love.profiler = require("cigumo_profile")
+		love.profiler.start()
+	end
 end
 
 local frame = 0
 function love.draw()
-  frame = frame + 1
+	frame = frame + 1
 
-  -- Run the screen vector
-  screen:trigger()
+	-- Run the screen vector
+	screen:trigger()
 
-  if frame == PROFILE then
-    love.profiler.stop()
-    print(love.profiler.report())
-    print("device", "num_triggers")
-    for k, v in pairs(cpu.device_triggers) do
-      print(k, v)
-    end
+	if frame == PROFILE then
+		love.profiler.stop()
+		print(love.profiler.report())
+		print("device", "num_triggers")
+		for k, v in pairs(cpu.device_triggers) do
+			print(k, v)
+		end
 
-    print("device", "cpu_reads")
-    for k, v in pairs(cpu.device_reads) do
-      print(k, v)
-    end
+		print("device", "cpu_reads")
+		for k, v in pairs(cpu.device_reads) do
+			print(k, v)
+		end
 
-    print("device", "cpu_writes")
-    for k, v in pairs(cpu.device_writes) do
-      print(k, v)
-    end
+		print("device", "cpu_writes")
+		for k, v in pairs(cpu.device_writes) do
+			print(k, v)
+		end
 
-    print("device", "total Device reads")
-    for k, v in pairs(Device.DEBUG_NUM_CALLS.read) do
-      print(k, v)
-    end
+		print("device", "total Device reads")
+		for k, v in pairs(Device.DEBUG_NUM_CALLS.read) do
+			print(k, v)
+		end
 
-    print("device, total Device writes")
-    for k, v in pairs(Device.DEBUG_NUM_CALLS.write) do
-      print(k, v)
-    end
+		print("device, total Device writes")
+		for k, v in pairs(Device.DEBUG_NUM_CALLS.write) do
+			print(k, v)
+		end
 
-    print(cpu:print_profile())
-  end
+		print(cpu:print_profile())
+	end
 
-  love.graphics.push()
+	love.graphics.push()
 
-    love.graphics.translate(PADDING, PADDING)
-    love.graphics.scale(SCALING, SCALING)
-    love.graphics.setColor(1,1,1)
+	love.graphics.translate(PADDING, PADDING)
+	love.graphics.scale(SCALING, SCALING)
+	love.graphics.setColor(1, 1, 1)
 
-    love.graphics.setBlendMode("replace", "premultiplied")
-    love.graphics.setShader(paletteShader)
+	love.graphics.setBlendMode("replace", "premultiplied")
+	love.graphics.setShader(paletteShader)
 
-    love.graphics.draw(screen.back)
+	love.graphics.draw(screen.back)
 
-    love.graphics.setBlendMode("alpha")
-    love.graphics.draw(screen.front)
+	love.graphics.setBlendMode("alpha")
+	love.graphics.draw(screen.front)
 
-    love.graphics.setShader()
+	love.graphics.setShader()
 
-  love.graphics.pop()
+	love.graphics.pop()
 
-  local dbg = "x: "..screen:readShort(8).." y: "..screen:readShort(10).." "
-  dbg = dbg.."PS: "..table.concat(cpu.program_stack, " ").." "
-  dbg = dbg.."frame: "..frame.." fps: "..love.timer.getFPS()
-  love.graphics.setColor(1,0,0)
-  --love.graphics.print(dbg, 10, 300)
+	local dbg = "x: " .. screen:readShort(8) .. " y: " .. screen:readShort(10) .. " "
+	dbg = dbg .. "PS: " .. table.concat(cpu.program_stack, " ") .. " "
+	dbg = dbg .. "frame: " .. frame .. " fps: " .. love.timer.getFPS()
+	love.graphics.setColor(1, 0, 0)
+	--love.graphics.print(dbg, 10, 300)
 end
 
 -- Take in a love keyconstant and return which bit in the controller byte
 keyToBit = {
-  ["rctrl"] = 0, ["lctrl"] = 0,
-  ["ralt"] = 2, ["lalt"] = 2,
-  ["rshift"] = 4, ["lshift"] = 4,
-  ["escape"] = 8,
-  ["up"] = 16,
-  ["down"] = 32,
-  ["left"] = 64,
-  ["right"] = 128,
+	["rctrl"] = 0,
+	["lctrl"] = 0,
+	["ralt"] = 2,
+	["lalt"] = 2,
+	["rshift"] = 4,
+	["lshift"] = 4,
+	["escape"] = 8,
+	["up"] = 16,
+	["down"] = 32,
+	["left"] = 64,
+	["right"] = 128,
 }
 
 function love.textinput(text)
-  controller[3] = string.byte(string.sub(text,1,1))
+	controller[3] = string.byte(string.sub(text, 1, 1))
 
-  controller:trigger()
+	controller:trigger()
 end
 
 function love.keypressed(key)
-  controller[2] = bor(controller[2], keyToBit[key] or 0)
+	controller[2] = bor(controller[2], keyToBit[key] or 0)
 
-  local ascii = 0
+	local ascii = 0
 
-  if key == "backspace" then
-    ascii = 0x08
-  elseif key == "return" then
-    ascii = 0x0d
-  elseif key == "tab" then
-    ascii = 0x09
-  elseif key == "delete" then
-    ascii = 0x7f
-  end
+	if key == "backspace" then
+		ascii = 0x08
+	elseif key == "return" then
+		ascii = 0x0d
+	elseif key == "tab" then
+		ascii = 0x09
+	elseif key == "delete" then
+		ascii = 0x7f
+	end
 
-  controller[3] = ascii
+	controller[3] = ascii
 
-  controller:trigger()
+	controller:trigger()
 end
 
 function love.keyreleased(key)
-  controller[2] = band(controller[2], bnot(keyToBit[key] or 0))
-  controller[3] = 0
+	controller[2] = band(controller[2], bnot(keyToBit[key] or 0))
+	controller[3] = 0
 
-  controller:trigger()
+	controller:trigger()
 end
 
 --[[ TODO
@@ -220,66 +222,66 @@ function love.filedropped(file)
 
   cpu:runUntilBreak()
 end
-]]--
+]]
+--
 
 function normalizeMouse(x, y)
-  -- Move to the center to offset math.floor
-  x = x + 0.5
-  y = y + 0.5
+	-- Move to the center to offset math.floor
+	x = x + 0.5
+	y = y + 0.5
 
-  x = x - PADDING
-  y = y - PADDING
+	x = x - PADDING
+	y = y - PADDING
 
-  x = x / SCALING
-  y = y / SCALING
+	x = x / SCALING
+	y = y / SCALING
 
-  return math.floor(x), math.floor(y)
+	return math.floor(x), math.floor(y)
 end
 
 local old_x, old_y
 
 function love.mousemoved(x, y)
-  x, y = normalizeMouse(x, y)
-  if x ~= old_x or y ~= old_y then
+	x, y = normalizeMouse(x, y)
+	if x ~= old_x or y ~= old_y then
+		mouse:writeShort(2, x)
+		mouse:writeShort(4, y)
 
-    mouse:writeShort(2, x)
-    mouse:writeShort(4, y)
+		old_x = x
+		old_y = y
 
-    old_x = x
-    old_y = y
-
-    mouse:trigger()
-  end
+		mouse:trigger()
+	end
 end
 
 function love.mousepressed(x, y, button)
-  x, y = normalizeMouse(x, y)
+	x, y = normalizeMouse(x, y)
 
-  mouse:writeShort(2, x)
-  mouse:writeShort(4, y)
+	mouse:writeShort(2, x)
+	mouse:writeShort(4, y)
 
-  mouse[6] = bor(mouse[6], button == 1 and 0x01 or 0x10)
+	mouse[6] = bor(mouse[6], button == 1 and 0x01 or 0x10)
 
-  mouse:trigger()
+	mouse:trigger()
 end
 
 function love.mousereleased(x, y, button)
-  x, y = normalizeMouse(x, y)
+	x, y = normalizeMouse(x, y)
 
-  mouse:writeShort(2, x)
-  mouse:writeShort(4, y)
+	mouse:writeShort(2, x)
+	mouse:writeShort(4, y)
 
-  mouse[6] = band(mouse[6], button == 1 and 0x10 or 0x01)
+	mouse[6] = band(mouse[6], button == 1 and 0x10 or 0x01)
 
-  mouse:trigger()
+	mouse:trigger()
 end
 
 function love.wheelmoved(_, y)
-  mouse[7] = y > 0 and 1 or -1
+	mouse[7] = y > 0 and 1 or -1
 
-  mouse:trigger()
+	mouse:trigger()
 end
 
 function love.update(dt)
-  mouse[7] = 0
+	mouse[7] = 0
 end
