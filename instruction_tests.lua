@@ -507,11 +507,7 @@ describe("the uxn instruction", function()
 					0x0c, -- relative byte jump
 				})
 
-				cpu:executeOnce()
-				assert(cpu.ip == 0x102)
-
-				cpu:executeOnce()
-
+				cpu:runUntilBreak()
 				assert(cpu.ip == 0x102 + 1 + offset, "ip is incremented by 1, so must take that into account")
 			end)
 
@@ -534,11 +530,7 @@ describe("the uxn instruction", function()
 					0x00,
 				})
 
-				cpu:executeOnce()
-				assert(cpu.ip == 0x102)
-
-				cpu:executeOnce()
-
+				cpu:runUntilBreak()
 				assert(cpu.ip == 0x102 + 1 + offset, "ip is incremented by 1, so must take that into account")
 			end)
 
@@ -569,14 +561,14 @@ describe("the uxn instruction", function()
 				end
 
 				for i = 1, 3 do
-					cpu:executeOnce()
+					cpu:runUntilBreak()
 				end
 
 				assert(cpu.ip == 0x180)
 
 				memory[cpu.ip] = 0x0c -- relative byte jump
 
-				cpu:executeOnce()
+				cpu:runUntilBreak()
 				assert(cpu.ip == 0x200)
 			end)
 		end)
