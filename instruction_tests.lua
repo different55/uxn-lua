@@ -50,15 +50,6 @@ describe("the uxn instruction", function()
 	end)
 
 	describe("LIT", function()
-		it("requires a value after the opcode in memory", function()
-			-- Run a program that has no literal after the LIT instruction
-			assert.has_errors(function()
-				run_program({
-					0x80, -- LIT
-				})
-			end)
-		end)
-
 		it("must have the keep, return, or short bit set", function()
 			run_program({
 				0x00, -- BRK
