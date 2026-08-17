@@ -97,6 +97,148 @@ describe("the uxn instruction", function()
 		end)
 	end)
 
+	describe("JCI", function()
+		it("skips over the short when the condition byte is zero", function()
+			run_program({
+				0x80, -- LIT 00
+				0x00,
+				0x20, -- JCI 0003
+				0x00,
+				0x03,
+				0x80, -- LIT AA
+				0xAA,
+			})
+
+			assert.are.equal(0xAA, PS())
+			assert.are.equal(1, cpu.program_stack:len())
+		end)
+
+		it("jumps forward when the condition byte is nonzero", function()
+			run_program({
+				0x80, -- LIT 01
+				0xFF,
+				0x20, -- JCI 0003
+				0x00,
+				0x03,
+				0x80, -- LIT BB
+				0xBB,
+				0x00, -- BRK
+				0x80, -- LIT CC
+				0xCC,
+			})
+
+			assert.are.equal(0xCC, PS())
+		end)
+	end)
+
+	describe("JMI", function()
+		it("jumps forward by the relative short in memory", function()
+			run_program({
+				0x40, -- JMI 0002
+				0x00,
+				0x02,
+				0x80, -- LIT AA
+				0xAA,
+				0x80, -- LIT BB
+				0xBB,
+			})
+
+			assert.are.equal(0xBB, PS())
+			assert.are.equal(1, cpu.program_stack:len())
+		end)
+
+		it("does not interact with the stacks", function()
+			-- 0x100: LIT 0x42
+			-- 0x102: JMI 0x0000      (PC after short=0x105, jump to 0x105)
+			-- 0x105: LIT 0x99
+			-- 0x107: BRK
+			run_program({
+				0x80, -- LIT 42
+				0x42,
+				0xc0, -- LITr 99
+				0x99,
+				0x40, -- JMI 0000
+				0x00,
+				0x00,
+			})
+
+			assert.are.equal(1, cpu.program_stack:len())
+			assert.are.equal(1, cpu.return_stack:len())
+			assert.are.equal(0x99, RS())
+			assert.are.equal(0x42, PS())
+		end)
+
+		it("can jump backwards", function()
+			-- TODO: I'm pretty sure I messed up my pointer math here.
+			run_program({
+				0x40, -- JMI 0004
+				0x00,
+				0x04,
+				0x00, -- BRK
+				0x80, -- LIT DD
+				0xDD,
+				0x00, -- BRK
+				0x40, -- JMI FFF8
+				0xFF,
+				0xF8,
+			})
+
+			assert.are.equal(0xDD, PS())
+		end)
+
+		it("handles zero offset", function()
+			run_program({
+				0x40, -- JMI 0000
+				0x00,
+				0x00,
+				0x80, -- LIT 55
+				0x55,
+			})
+
+			assert.are.equal(0x55, PS())
+		end)
+	end)
+
+	describe("JSI", function()
+		it("pushes PC+2 to the return stack and jumps relative to the next short", function()
+			run_program({
+				0x60, -- JSI 0003
+				0x00,
+				0x03,
+				0x80, -- LIT CC
+				0xCC,
+				0x00, -- BRK
+				0x80, -- LIT DD
+				0xDD,
+				0x6c, -- JMP2r
+			})
+
+			assert.are.equal(2, cpu.program_stack:len())
+			assert.are.equal(0xCC, PS())
+			assert.are.equal(0xDD, PS(-1))
+		end)
+
+		it("does not affect the working stack", function()
+			-- 0x100: LIT 0x42
+			-- 0x102: JSI 0x0000      (stash 0x105, jump to 0x105)
+			-- 0x105: LIT 0x99
+			-- 0x107: BRK
+			run_program({
+				0x80, -- LIT 42
+				0x42,
+				0x60, -- JSI 0000
+				0x00,
+				0x00,
+				0x80, -- LIT 99
+				0x99,
+			})
+
+			assert.are.equal(2, cpu.program_stack:len())
+			assert.are.equal(0x99, PS())
+			assert.are.equal(0x42, PS(-1))
+		end)
+	end)
+
 	describe("INC", function()
 		it("increments bytes", function()
 			run_program({
