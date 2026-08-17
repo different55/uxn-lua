@@ -352,30 +352,15 @@ describe("the uxn instruction", function()
 			assert(cpu.program_stack:len() == 1)
 		end)
 
-		it("can't pop shorts with only one byte on the stack", function()
-			assert.has_errors(function()
-				run_program({
-					0x80,
-					0xab, -- LIT 0xab
-					0x22, -- POP2
-				})
-			end)
-		end)
+		it("wraps around the stack", function()
+			run_program({
+				0x02, -- POP empty stack
+				0x80, -- LIT bb
+				0xbb,
+			})
 
-		it("can't pop a byte when the stack is empty", function()
-			assert.has_errors(function()
-				run_program({
-					0x02, -- POP
-				})
-			end)
-		end)
-
-		it("can't pop a short when the stack is empty", function()
-			assert.has_errors(function()
-				run_program({
-					0x22, -- POP2
-				})
-			end)
+			assert.are.equal(0, cpu.program_stack:len())
+			assert.are.equal(0xbb, PS())
 		end)
 	end)
 
@@ -430,9 +415,19 @@ describe("the uxn instruction", function()
 	end)
 
 	describe("NIP", function()
-		pending("one byte fail", true)
-		pending("one short fail", true)
-		pending("one byte short fail", true)
+		it("preserves values across the circular boundary", function()
+			run_program({
+				0x02, -- POP empty stack
+				0x80, -- LIT aa
+				0xaa,
+				0x80, -- LIT bb
+				0xbb,
+				0x04, -- NIP
+			})
+
+			assert.are.equal(0, cpu.program_stack:len())
+			assert.are.equal(0xbb, PS())
+		end)
 
 		pending("byte", true)
 		pending("short", true)

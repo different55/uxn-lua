@@ -19,14 +19,20 @@ Stack.__index = Stack
 
 function Stack:new(limit)
 	local limit = limit or 256
-	return setmetatable({
+	local stack = setmetatable({
 		limit = limit,
 		head = 0,
 	}, self)
+
+	for i = 0, limit - 1 do
+		stack[i] = 0
+	end
+
+	return stack
 end
 
 function Stack:push(byte)
-	local head = self.head + 1
+	local head = band(self.head + 1, 0xff)
 	self[head] = byte
 	self.head = head
 end
@@ -34,18 +40,13 @@ end
 function Stack:pop()
 	local head = self.head
 	local byte = self[head]
-	self.head = head - 1
+	self.head = band(head - 1, 0xff)
 	return byte
-end
-
-function Stack:check(n)
-	local new = self.head + n
-	return new >= 0 and new <= self.limit
 end
 
 -- 0-indexed non-destructive get
 function Stack:getnth(n)
-	return self[self.head - n]
+	return self[band(self.head - n, 0xff)]
 end
 
 function Stack:len()
@@ -147,11 +148,6 @@ function Uxn:get_n(n, keep_bit, return_bit, short_bit)
 		n = n * 2
 	end
 
-	-- Make sure the stack has enough space to fetch n bytes
-	if not stack:check(-n) then
-		error("Stack not big enough to get " .. tostring(n) .. " bytes")
-	end
-
 	local output = {}
 
 	for i = 1, n do
@@ -171,11 +167,7 @@ end
 
 function Uxn:push(value, k, r, s)
 	local stack = r and self.return_stack or self.program_stack
-	--assert(stack:check(1 + (s and 1 or 0)), "Can't push", value, "k", k, "r", r, "s", s)
 
-	if stack.head > 0xfe then
-		error(r and "return stack overflow" or "working stack overflow")
-	end
 	if s then
 		stack:push(band(rshift(value, 8), 0xff))
 	end
@@ -205,9 +197,6 @@ function Uxn:pop(k, r, s)
 		else
 			value = stack:pop()
 		end
-	end
-	if not value then
-		error(r and "return stack underflow" or "working stack underflow")
 	end
 	return value
 end
