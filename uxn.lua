@@ -320,17 +320,35 @@ local opTable = {
 	--
 	-- 0x00 BRK/LIT
 	function(self, k, r, s)
-		local value
-		if s then
-			value = bytes_to_short(self.memory[self.ip], self.memory[self.ip + 1])
+		if k then
+			local value
+			if s then
+				value = bytes_to_short(self.memory[self.ip], self.memory[self.ip + 1])
+			else
+				value = self.memory[self.ip]
+			end
+			if self.PRINT then
+				print("Push " .. (s and "short" or "byte") .. " value = ", bit.tohex(value))
+			end
+			self:push(value, k, r, s)
+			self.ip = self.ip + (s and 2 or 1)
 		else
-			value = self.memory[self.ip]
+			local addr = bytes_to_short(self.memory[self.ip], self.memory[self.ip + 1])
+			-- 0x20 JCI
+			if s and not r then
+				local flag = self:pop(false, false, false)
+				if flag ~= 0 then
+					self.ip = band(self.ip + 2 + addr, 0xffff)
+				else
+					self.ip = band(self.ip + 2, 0xffff)
+				end
+			elseif r and not s then
+				self.ip = band(self.ip + 2 + addr, 0xffff)
+			elseif s and r then
+				self:push(self.ip + 2, false, true, true)
+				self.ip = band(self.ip + 2 + addr, 0xffff)
+			end
 		end
-		if self.PRINT then
-			print("Push " .. (s and "short" or "byte") .. " value = ", bit.tohex(value))
-		end
-		self:push(value, k, r, s)
-		self.ip = self.ip + (s and 2 or 1)
 	end,
 
 	-- 0x01 INC

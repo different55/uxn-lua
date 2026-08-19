@@ -65,7 +65,7 @@ describe("the uxn instruction", function()
 			local high = 0x12
 			local low = 0x34
 			run_program({
-				0x20, -- LIT2
+				0xa0, -- LIT2
 				high,
 				low,
 			})
@@ -87,7 +87,7 @@ describe("the uxn instruction", function()
 			it("the return stack when requested", function()
 				local value = 0x12
 				run_program({
-					0x40, -- LITr
+					0xc0, -- LITr
 					value,
 				})
 
@@ -115,7 +115,7 @@ describe("the uxn instruction", function()
 
 		it("jumps forward when the condition byte is nonzero", function()
 			run_program({
-				0x80, -- LIT 01
+				0x80, -- LIT FF
 				0xFF,
 				0x20, -- JCI 0003
 				0x00,
@@ -148,10 +148,6 @@ describe("the uxn instruction", function()
 		end)
 
 		it("does not interact with the stacks", function()
-			-- 0x100: LIT 0x42
-			-- 0x102: JMI 0x0000      (PC after short=0x105, jump to 0x105)
-			-- 0x105: LIT 0x99
-			-- 0x107: BRK
 			run_program({
 				0x80, -- LIT 42
 				0x42,
@@ -169,7 +165,6 @@ describe("the uxn instruction", function()
 		end)
 
 		it("can jump backwards", function()
-			-- TODO: I'm pretty sure I messed up my pointer math here.
 			run_program({
 				0x40, -- JMI 0004
 				0x00,
@@ -178,9 +173,9 @@ describe("the uxn instruction", function()
 				0x80, -- LIT DD
 				0xDD,
 				0x00, -- BRK
-				0x40, -- JMI FFF8
+				0x40, -- JMI FFFA
 				0xFF,
-				0xF8,
+				0xFA,
 			})
 
 			assert.are.equal(0xDD, PS())
@@ -252,7 +247,7 @@ describe("the uxn instruction", function()
 
 		it("increments shorts", function()
 			run_program({
-				0x20,
+				0xa0,
 				0x90,
 				0xab, -- LIT 0x90ab
 				0x21, -- INC2
@@ -277,7 +272,7 @@ describe("the uxn instruction", function()
 		describe("wraps shorts", function()
 			it("with one byte", function()
 				run_program({
-					0x20,
+					0xa0,
 					0xab,
 					0xff, -- LIT 0xffff
 					0x21, -- INC2
@@ -289,7 +284,7 @@ describe("the uxn instruction", function()
 
 			it("with two bytes", function()
 				run_program({
-					0x20,
+					0xa0,
 					0xff,
 					0xff, -- LIT 0xffff
 					0x21, -- INC2
@@ -306,7 +301,7 @@ describe("the uxn instruction", function()
 			run_program({
 				0x80,
 				0x00, -- LIT  0x00
-				0x40,
+				0xc0,
 				0x00, -- LITr 0x00
 				0x02, -- POP
 			})
@@ -319,7 +314,7 @@ describe("the uxn instruction", function()
 			run_program({
 				0x80,
 				0x00, -- LIT  0x00
-				0x40,
+				0xc0,
 				0x00, -- LITr 0x00
 				0x42, -- POPr
 			})
@@ -342,7 +337,7 @@ describe("the uxn instruction", function()
 			run_program({
 				0x80,
 				0xab, -- LIT 0xab
-				0x20,
+				0xa0,
 				0x12,
 				0x34, -- LIT2 0x1234
 				0x22, -- POP2
@@ -367,7 +362,7 @@ describe("the uxn instruction", function()
 	describe("DUP", function()
 		it("leaves 6 bytes on the stack with K and S", function()
 			run_program({
-				0x20,
+				0xa0,
 				0x78,
 				0x9a,
 				0xa6, -- DUP2k 1010 0011
@@ -388,7 +383,7 @@ describe("the uxn instruction", function()
 
 		it("duplicates shorts correctly", function()
 			run_program({
-				0x20,
+				0xa0,
 				0x21,
 				0x43, -- LIT 0x2143
 				0x26, -- DUP2
@@ -458,10 +453,10 @@ describe("the uxn instruction", function()
 
 			it("with equal shorts", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT 0x1234
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT 0x1234
 					0x28, -- EQU2
@@ -490,10 +485,10 @@ describe("the uxn instruction", function()
 
 			it("fully not equal shorts", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT 0x1234
-					0x20,
+					0xa0,
 					0x21,
 					0x43, -- LIT 0x2143
 					0x28, -- EQU2
@@ -505,10 +500,10 @@ describe("the uxn instruction", function()
 
 			it("with shorts with same low bytes", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT 0x1234
-					0x20,
+					0xa0,
 					0xab,
 					0x34, -- LIT 0x1234
 					0x28, -- EQU2
@@ -520,10 +515,10 @@ describe("the uxn instruction", function()
 
 			it("with shorts with same high bytes", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT 0x1234
-					0x20,
+					0xa0,
 					0x12,
 					0xde, -- LIT 0x1234
 					0x28, -- EQU2
@@ -552,10 +547,10 @@ describe("the uxn instruction", function()
 
 			it("with equal shorts", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT 0x1234
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT 0x1234
 					0x29, -- NEQ2
@@ -584,10 +579,10 @@ describe("the uxn instruction", function()
 
 			it("fully not equal shorts", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT 0x1234
-					0x20,
+					0xa0,
 					0x21,
 					0x43, -- LIT 0x2143
 					0x29, -- NEQ2
@@ -599,10 +594,10 @@ describe("the uxn instruction", function()
 
 			it("with shorts with same low bytes", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT 0x1234
-					0x20,
+					0xa0,
 					0xab,
 					0x34, -- LIT 0x1234
 					0x29, -- NEQ2
@@ -614,10 +609,10 @@ describe("the uxn instruction", function()
 
 			it("with shorts with same high bytes", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT 0x1234
-					0x20,
+					0xa0,
 					0x12,
 					0xde, -- LIT 0x1234
 					0x29, -- NEQ2
@@ -726,7 +721,7 @@ describe("the uxn instruction", function()
 				run_program({
 					0x80,
 					0x12, -- LIT  0x12
-					0x40,
+					0xc0,
 					0x34, -- LITr 0x34
 					0x0f, -- STH
 				})
@@ -742,7 +737,7 @@ describe("the uxn instruction", function()
 				run_program({
 					0x80,
 					0x12, -- LIT  0x12
-					0x40,
+					0xc0,
 					0x34, -- LITr 0x34
 					0x4f, -- STHr
 				})
@@ -756,10 +751,10 @@ describe("the uxn instruction", function()
 
 			it("short from program to return", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT  0x1234
-					0x60,
+					0xe0,
 					0xab,
 					0xcd, -- LITr 0xabcd
 					0x2f, -- STH
@@ -776,10 +771,10 @@ describe("the uxn instruction", function()
 
 			it("short from return to program", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0x34, -- LIT  0x1234
-					0x60,
+					0xe0,
 					0xab,
 					0xcd, -- LITr 0xabcd
 					0x6f, -- STH
@@ -797,7 +792,7 @@ describe("the uxn instruction", function()
 
 		it("keeps number of bytes properly", function()
 			run_program({
-				0x20,
+				0xa0,
 				0x21,
 				0x43, -- LIT 0x2143
 				0xaf, -- STH2k
@@ -842,10 +837,10 @@ describe("the uxn instruction", function()
 		describe("adds two shorts", function()
 			it("with no overflow", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0xa0, -- LIT 0x12fe
-					0x20,
+					0xa0,
 					0x34,
 					0x02, -- LIT 0x3402
 					0x38, -- ADD2
@@ -857,10 +852,10 @@ describe("the uxn instruction", function()
 
 			it("with low overflow", function()
 				run_program({
-					0x20,
+					0xa0,
 					0x12,
 					0xfe, -- LIT 0x12fe
-					0x20,
+					0xa0,
 					0x34,
 					0x02, -- LIT 0x3402
 					0x38, -- ADD2
@@ -872,10 +867,10 @@ describe("the uxn instruction", function()
 
 			it("with high overflow", function()
 				run_program({
-					0x20,
+					0xa0,
 					0xdf,
 					0x12, -- LIT 0x12fe
-					0x20,
+					0xa0,
 					0x21,
 					0x34, -- LIT 0x3402
 					0x38, -- ADD2
@@ -888,7 +883,7 @@ describe("the uxn instruction", function()
 	end)
 
 	describe("DIV", function()
-		it("doesn't divide by zero", function()
+		it("doesn't divide by zero", function() -- TODO: This is actually fine now. I think.
 			assert.has_error(function()
 				run_program({
 					0x80,
@@ -917,10 +912,10 @@ describe("the uxn instruction", function()
 				0x1b,
 
 				-- DIV 0xceaa/0x0002
-				0x20,
+				0xa0,
 				0xce,
 				0xaa,
-				0x20,
+				0xa0,
 				0x00,
 				0x02,
 				0x3b,
@@ -1016,7 +1011,7 @@ describe("the uxn instruction", function()
 	describe("STZ", function()
 		it("only takes one byte of address", function()
 			run_program({
-				0x20,
+				0xa0,
 				0xff,
 				0xff, -- Push values that should not be touched
 				0x80,
@@ -1026,7 +1021,7 @@ describe("the uxn instruction", function()
 
 				0x11, -- STZ
 
-				0x20,
+				0xa0,
 				0x21,
 				0x43,
 				0x80,
