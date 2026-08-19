@@ -370,7 +370,7 @@ describe("the uxn instruction", function()
 				0x20,
 				0x78,
 				0x9a,
-				0xa3, -- DUP2k 1010 0011
+				0xa6, -- DUP2k 1010 0011
 			})
 
 			assert(cpu.program_stack:len() == 6)
@@ -380,7 +380,7 @@ describe("the uxn instruction", function()
 			run_program({
 				0x80,
 				0x12,
-				0x83, -- DUPk
+				0x86, -- DUPk
 			})
 
 			assert(cpu.program_stack:len() == 3)
@@ -391,7 +391,7 @@ describe("the uxn instruction", function()
 				0x20,
 				0x21,
 				0x43, -- LIT 0x2143
-				0x23, -- DUP2
+				0x26, -- DUP2
 			})
 
 			assert(cpu.program_stack:len() == 4)
@@ -405,7 +405,7 @@ describe("the uxn instruction", function()
 			run_program({
 				0x80,
 				0x83,
-				0x03,
+				0x06,
 			})
 
 			assert(cpu.program_stack:len() == 2)
@@ -422,7 +422,7 @@ describe("the uxn instruction", function()
 				0xaa,
 				0x80, -- LIT bb
 				0xbb,
-				0x04, -- NIP
+				0x03, -- NIP
 			})
 
 			assert.are.equal(0, cpu.program_stack:len())
