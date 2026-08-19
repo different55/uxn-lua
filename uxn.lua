@@ -344,21 +344,14 @@ local opTable = {
 		self:pop(k, r, s)
 	end,
 
-	-- 0x03 DUP
-	function(self, k, r, s)
-		local a = self:pop(k, r, s)
-		self:push(a, k, r, s)
-		self:push(a, k, r, s)
-	end,
-
-	-- 0x04 NIP
+	-- 0x03 NIP
 	function(self, k, r, s)
 		local b = self:pop(k, r, s)
 		self:pop(k, r, s)
 		self:push(b, k, r, s)
 	end,
 
-	-- 0x05 SWAP
+	-- 0x04 SWAP
 	function(self, k, r, s)
 		local b = self:pop(k, r, s)
 		local a = self:pop(k, r, s)
@@ -366,22 +359,29 @@ local opTable = {
 		self:push(a, k, r, s)
 	end,
 
-	-- 0x06 OVER
-	function(self, k, r, s)
-		local b = self:pop(k, r, s)
-		local a = self:pop(k, r, s)
-		self:push(a, k, r, s)
-		self:push(b, k, r, s)
-		self:push(a, k, r, s)
-	end,
-
-	-- 0x07 ROT
+	-- 0x05 ROT
 	function(self, k, r, s)
 		local c = self:pop(k, r, s)
 		local b = self:pop(k, r, s)
 		local a = self:pop(k, r, s)
 		self:push(b, k, r, s)
 		self:push(c, k, r, s)
+		self:push(a, k, r, s)
+	end,
+
+	-- 0x06 DUP
+	function(self, k, r, s)
+		local a = self:pop(k, r, s)
+		self:push(a, k, r, s)
+		self:push(a, k, r, s)
+	end,
+
+	-- 0x07 OVER
+	function(self, k, r, s)
+		local b = self:pop(k, r, s)
+		local a = self:pop(k, r, s)
+		self:push(a, k, r, s)
+		self:push(b, k, r, s)
 		self:push(a, k, r, s)
 	end,
 
