@@ -47,7 +47,7 @@ end
 
 system.initColours = false
 
-system:addPort(0x02, false, function(self)
+system:addPort(0x02, false, function(self) -- TODO: These have changed in later versions of Varvara.
 	return self.cpu.program_stack:len()
 end)
 
@@ -58,6 +58,12 @@ end)
 system:addPort(0x08, true, nil, regeneratePalette)
 system:addPort(0x0a, true, nil, regeneratePalette)
 system:addPort(0x0c, true, nil, regeneratePalette)
+
+system:addPort(0x0e, false, nil, function(self)
+	-- TODO: Add other types of debugging output based on the byte written.
+	io.stderr:write("WST" .. self.cpu.program_stack:debug())
+	io.stderr:write("RST" .. self.cpu.return_stack:debug())
+end)
 
 system:addPort(0x0f, false, nil, function()
 	error("halt")

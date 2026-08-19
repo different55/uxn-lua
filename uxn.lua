@@ -54,11 +54,12 @@ function Stack:len()
 end
 
 function Stack:debug()
-	local t = {}
-	for i = 1, self.head do
-		t[#t + 1] = bit.tohex(self[i], 2)
+	local t = { band(self.head - 8, 0xff) > 0 and " " or "|" } -- TODO: Not sure this line is entirely correct.
+	for i = self.head - 8, self.head do
+		t[#t + 1] = bit.tohex(self[band(i, 0xff)], 2) .. ((band(i, 0xff) == 0x00) and "|" or " ")
 	end
-	return table.concat(t, " ")
+	t[#t + 1] = "<" .. self.head .. "\n"
+	return table.concat(t, "")
 end
 
 local Memory = {
