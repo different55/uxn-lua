@@ -488,7 +488,7 @@ local opTable = {
 		local value = self.memory[offset]
 
 		if s then
-			value = lshift(value, 8) + self.memory[offset + 1]
+			value = lshift(value, 8) + self.memory[band(offset + 1, 0xff)]
 		end
 
 		self:push(value, k, r, s)
@@ -503,7 +503,7 @@ local opTable = {
 		self.memory[offset] = data[1]
 
 		if s then
-			self.memory[offset + 1] = data[2]
+			self.memory[band(offset + 1, 0xff)] = data[2]
 		end
 	end,
 

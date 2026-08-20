@@ -989,13 +989,13 @@ describe("the uxn instruction", function()
 
 				-- Fetch 0xff
 				0x80,
-				0xfe,
+				0xff,
 				0x30,
 			})
 
 			assert(cpu.program_stack:len() == 6)
-			assert(PS() == 0x9a)
-			assert(PS(-1) == 0x78)
+			assert(PS() == 0x12)
+			assert(PS(-1) == 0x9a)
 			assert(PS(-2) == 0xef)
 			assert(PS(-3) == 0xcd)
 			assert(PS(-4) == 0x34)
