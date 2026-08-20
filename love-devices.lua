@@ -47,11 +47,53 @@ end
 
 system.initColours = false
 
-system:addPort(0x02, false, function(self) -- TODO: These have changed in later versions of Varvara.
+-- Expansion port
+system:addPort(0x02, true, nil, function(self)
+	local addr = self:readShort(0x02)
+	local mem = self.cpu.memory
+	local op = mem[addr]
+	local length = self.cpu:peek_short(addr + 1)
+
+	-- Fill
+	if op == 0x00 then
+		local bank = self.cpu.banks[self.cpu:peek_short(addr + 3)]
+		local start = self.cpu:peek_short(addr + 5)
+		local value = self.cpu:peek_byte(addr + 7)
+		length = math.min(length, math.max(0, 0x10000 - start))
+
+		for i = 0, length - 1 do
+			bank[start + i] = value
+		end
+	-- CopyL
+	elseif op == 0x01 then
+		local src_bank = self.cpu.banks[self.cpu:peek_short(addr + 3)]
+		local src_addr = self.cpu:peek_short(addr + 5)
+		local dst_bank = self.cpu.banks[self.cpu:peek_short(addr + 7)]
+		local dst_addr = self.cpu:peek_short(addr + 9)
+		length = math.min(length, math.max(0, 0x10000 - src_addr), math.max(0, 0x10000 - dst_addr))
+
+		for i = 0, length - 1 do
+			dst_bank[dst_addr + i] = src_bank[src_addr + i]
+		end
+	-- CopyR
+	elseif op == 0x02 then
+		local src_bank = self.cpu.banks[self.cpu:peek_short(addr + 3)]
+		local src_addr = self.cpu:peek_short(addr + 5)
+		local dst_bank = self.cpu.banks[self.cpu:peek_short(addr + 7)]
+		local dst_addr = self.cpu:peek_short(addr + 9)
+		length = math.min(length, math.max(0, 0x10000 - src_addr), math.max(0, 0x10000 - dst_addr))
+
+		for i = length - 1, 0, -1 do
+			dst_bank[dst_addr + i] = src_bank[src_addr + i]
+		end
+	end
+end)
+
+system:addPort(0x04, false, function(self) -- TODO: These have changed in later versions of Varvara.
 	return self.cpu.program_stack:len()
 end)
 
-system:addPort(0x03, false, function(self)
+system:addPort(0x05, false, function(self)
 	return self.cpu.return_stack:len()
 end)
 
@@ -65,8 +107,8 @@ system:addPort(0x0e, false, nil, function(self)
 	io.stderr:write("RST" .. self.cpu.return_stack:debug())
 end)
 
-system:addPort(0x0f, false, nil, function()
-	error("halt")
+system:addPort(0x0f, false, nil, function(self, byte)
+	self.cpu.state = byte
 end)
 
 -- portnum, short, read, write
@@ -244,12 +286,12 @@ local screen = function(width, height)
 			if verticalFlip then
 				rowAddr = 7 - rowAddr
 			end
-			local row = self.cpu.memory[spriteAddr + rowAddr]
+			local row = self.cpu:peek_byte(spriteAddr + rowAddr)
 
 			-- 2bpp
 			local row2
 			if spriteMode == 1 then
-				row2 = self.cpu.memory[spriteAddr + rowAddr + 8]
+				row2 = self.cpu:peek_byte(spriteAddr + rowAddr + 8)
 			end
 
 			for j = 0, 7 do
@@ -352,7 +394,7 @@ local function openFile(self, mode)
 
 	-- Assume null-terminated strings
 	while char ~= 0x00 do
-		char = cpu.memory[counter]
+		char = cpu:peek_byte(counter)
 		fileName = fileName .. string.char(char)
 		counter = counter + 1
 	end
@@ -411,7 +453,7 @@ file:addPort(12, true, nil, function(self)
 
 	-- Copy contents to target_address:target_address+length
 	for i = 1, #dataTable - 1 do -- Skip the index value that's returned
-		cpu.memory[target_address + i - 1] = dataTable[i]
+		cpu:poke_byte(dataTable[i], target_address + i - 1)
 	end
 end)
 

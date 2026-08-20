@@ -75,18 +75,35 @@ local Memory = {
 	end,
 }
 
+local Banks = {
+	__index = function(self, k)
+		if type(k) == "number" then
+			local bank = rawget(self, band(k, 0xffff))
+			if bank then
+				return bank
+			else
+				self[band(k, 0xffff)] = setmetatable({}, Memory)
+				return self[band(k, 0xffff)]
+			end
+		end
+	end,
+}
+
 local Uxn = {}
 
 Uxn.__index = Uxn
 
 function Uxn:new(mem)
+	local memory = setmetatable(mem or {}, Memory)
 	return setmetatable({
 		ip = 1,
 		program_stack = Stack:new(),
 		return_stack = Stack:new(),
-		memory = setmetatable(mem or {}, Memory),
+		memory = memory,
+		banks = setmetatable({ [0] = memory }, Banks),
 		devices = {},
 		vectors = {},
+		state = 0,
 		-- DEBUG TABLES
 		debug_profile = {},
 		device_triggers = {}, -- Debug
@@ -106,6 +123,37 @@ function Uxn:print_profile()
 		output = output .. k .. "\t\t" .. v .. "\n"
 	end
 	return output
+end
+
+function Uxn:peek_byte(address, bank)
+	bank = bank or 0
+	return self.banks[bank][address]
+end
+
+function Uxn:poke_byte(value, address, bank)
+	bank = bank or 0
+	self.banks[bank][address] = band(value, 0xFF)
+end
+
+function Uxn:peek_short(address, bank)
+	bank = bank or 0
+	return bytes_to_short(self.banks[bank][address], self.banks[bank][address + 1])
+end
+
+function Uxn:poke_short(value, address, bank)
+	bank = bank or 0
+	local high, low = shorts_to_bytes({ band(value, 0xffff) })
+	self.banks[bank][address] = high
+	self.banks[bank][address + 1] = low
+end
+
+function Uxn:load_program(program)
+	for i = 1, #program do
+		local offset = 0x100 + i - 1
+		local bank = math.floor(offset / 0x10000)
+		local address = offset % 0x10000
+		self:poke_byte(program[i], address, bank)
+	end
 end
 
 function bytes_to_shorts(bytes)
@@ -324,9 +372,9 @@ local opTable = {
 		if k then
 			local value
 			if s then
-				value = bytes_to_short(self.memory[self.ip], self.memory[self.ip + 1])
+				value = self:peek_short(self.ip)
 			else
-				value = self.memory[self.ip]
+				value = self:peek_byte(self.ip)
 			end
 			if self.PRINT then
 				print("Push " .. (s and "short" or "byte") .. " value = ", bit.tohex(value))
@@ -334,7 +382,7 @@ local opTable = {
 			self:push(value, k, r, s)
 			self.ip = self.ip + (s and 2 or 1)
 		else
-			local addr = bytes_to_short(self.memory[self.ip], self.memory[self.ip + 1])
+			local addr = self:peek_short(self.ip)
 			-- 0x20 JCI
 			if s and not r then
 				local flag = self:pop(false, false, false)
@@ -485,10 +533,10 @@ local opTable = {
 	function(self, k, r, s)
 		local offset = self:pop(k, r, false)
 
-		local value = self.memory[offset]
+		local value = self:peek_byte(offset)
 
 		if s then
-			value = lshift(value, 8) + self.memory[band(offset + 1, 0xff)]
+			value = bytes_to_short(value, self:peek_byte(band(offset + 1, 0xff)))
 		end
 
 		self:push(value, k, r, s)
@@ -500,10 +548,10 @@ local opTable = {
 
 		local offset = table.remove(data)
 
-		self.memory[offset] = data[1]
+		self:poke_byte(data[1], offset)
 
 		if s then
-			self.memory[band(offset + 1, 0xff)] = data[2]
+			self:poke_byte(data[2], band(offset + 1, 0xff))
 		end
 	end,
 
@@ -513,10 +561,10 @@ local opTable = {
 
 		local addr = uint8_to_int8(offset) + self.ip
 
-		local value = self.memory[addr]
+		local value = self:peek_byte(addr)
 
 		if s then
-			value = lshift(value, 8) + self.memory[addr + 1]
+			value = self:peek_short(addr)
 		end
 
 		self:push(value, k, r, s)
@@ -528,10 +576,10 @@ local opTable = {
 
 		local address = uint8_to_int8(table.remove(data)) + self.ip
 
-		self.memory[address] = data[1]
+		self:poke_byte(data[1], address)
 
 		if s then
-			self.memory[address + 1] = data[2]
+			self:poke_byte(data[2], address + 1)
 		end
 	end,
 
@@ -539,10 +587,10 @@ local opTable = {
 	function(self, k, r, s)
 		local addr = self:pop(k, r, true)
 
-		local value = self.memory[addr]
+		local value = self:peek_byte(addr)
 
 		if s then
-			value = lshift(value, 8) + self.memory[addr + 1]
+			value = self:peek_short(addr)
 		end
 
 		self:push(value, k, r, s)
@@ -554,10 +602,10 @@ local opTable = {
 
 		local address = bytes_to_short(data[#data - 1], data[#data])
 
-		self.memory[address] = data[1]
+		self:poke_byte(data[1], address)
 
 		if s then
-			self.memory[address + 1] = data[2]
+			self:poke_byte(data[2], address + 1)
 		end
 	end,
 
@@ -646,10 +694,9 @@ local opTable = {
 function Uxn:runUntilBreak()
 	local count = 0
 	local extractOpcode = extractOpcode
-	local memory = self.memory
 	while true do
 		local opline
-		local opByte = memory[self.ip]
+		local opByte = self:peek_byte(self.ip)
 		if opByte == 0 then
 			break
 		end
@@ -673,6 +720,12 @@ function Uxn:runUntilBreak()
 
 		count = count + 1
 	end
+
+	if self.state ~= 0 then
+		local error_code = band(self.state, 0x7F)
+		love.event.quit(error_code)
+	end
+
 	return count
 end
 

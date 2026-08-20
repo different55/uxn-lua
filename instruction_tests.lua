@@ -4,23 +4,8 @@ local bit = require("bit")
 
 local Uxn = uxn.Uxn
 
-function init_zero_page(memory)
-	for i = 0, 255 do
-		memory[i] = 0x00
-	end
-end
-
-function load_program(memory, program)
-	for i = 1, #program do
-		memory[i + 255] = program[i]
-	end
-	-- Don't forget a trailing BRK
-	memory[#program + 256] = 0x00
-end
-
 describe("the uxn instruction", function()
 	local cpu
-	local memory
 
 	local function PS(offset)
 		offset = offset or 0
@@ -35,17 +20,13 @@ describe("the uxn instruction", function()
 	end
 
 	local function run_program(program)
-		load_program(memory, program)
+		cpu:load_program(program)
 
 		return cpu:runUntilBreak()
 	end
 
 	before_each(function()
-		memory = {}
-		for i = 0, 255 do
-			memory[i] = 0x00
-		end
-		cpu = Uxn:new(memory)
+		cpu = Uxn:new()
 		cpu.ip = 0x100
 	end)
 
@@ -632,8 +613,7 @@ describe("the uxn instruction", function()
 		describe("jumps to a relative", function()
 			it("negative offset", function()
 				offset = -10
-				init_zero_page(memory)
-				load_program(memory, {
+				cpu:load_program({
 					0x80,
 					bit.band(offset, 0xff), -- LIT value
 					0x0c, -- relative byte jump
@@ -645,7 +625,7 @@ describe("the uxn instruction", function()
 
 			it("positive offset", function()
 				offset = 10
-				load_program(memory, {
+				cpu:load_program({
 					0x80,
 					bit.band(offset, 0xff), -- LIT value
 					0x0c, -- relative byte jump
@@ -680,7 +660,7 @@ describe("the uxn instruction", function()
 			end)
 
 			it("wrapping offset", function()
-				load_program(memory, {
+				cpu:load_program({
 					0x80,
 					0x7f, -- LIT 0x7f (127)
 					0x80,
@@ -689,7 +669,7 @@ describe("the uxn instruction", function()
 				})
 
 				for i = 0x107, 0x201 do
-					memory[i] = 0x00
+					cpu:poke_byte(0x00, i)
 				end
 
 				for i = 1, 3 do
@@ -698,7 +678,7 @@ describe("the uxn instruction", function()
 
 				assert(cpu.ip == 0x180)
 
-				memory[cpu.ip] = 0x0c -- relative byte jump
+				cpu:poke_byte(0x0c, cpu.ip) -- relative byte jump
 
 				cpu:runUntilBreak()
 				assert(cpu.ip == 0x200)
@@ -934,21 +914,21 @@ describe("the uxn instruction", function()
 	describe("LDZ", function()
 		before_each(function()
 			-- Boundary conditions
-			memory[0x00] = 0x12
-			memory[0x01] = 0x34
+			cpu:poke_byte(0x12, 0x00)
+			cpu:poke_byte(0x34, 0x01)
 
-			memory[0xfe] = 0x78
-			memory[0xff] = 0x9a
+			cpu:poke_byte(0x78, 0xfe)
+			cpu:poke_byte(0x9a, 0xff)
 
 			-- Byte test
-			memory[0x09] = 0x1d
-			memory[0x0a] = 0x3c
-			memory[0x0b] = 0x5a
+			cpu:poke_byte(0x1d, 0x09)
+			cpu:poke_byte(0x3c, 0x0a)
+			cpu:poke_byte(0x5a, 0x0b)
 
 			-- Short test
-			memory[0x9f] = 0xab
-			memory[0xa0] = 0xcd
-			memory[0xa1] = 0xef
+			cpu:poke_byte(0xab, 0x9f)
+			cpu:poke_byte(0xcd, 0xa0)
+			cpu:poke_byte(0xef, 0xa1)
 		end)
 
 		it("fetches bytes", function()
@@ -1028,7 +1008,7 @@ describe("the uxn instruction", function()
 		end)
 
 		it("overwrites manually set values ", function()
-			memory[0x9c] = 0xab
+			cpu:poke_byte(0xab, 0x9c)
 
 			run_program({
 				0x80,
@@ -1038,7 +1018,7 @@ describe("the uxn instruction", function()
 				0x11, -- STZ
 			})
 
-			assert(memory[0x9c] == 0x34)
+			assert(cpu:peek_byte(0x9c) == 0x34)
 		end)
 	end)
 
