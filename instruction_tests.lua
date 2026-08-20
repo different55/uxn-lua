@@ -883,16 +883,16 @@ describe("the uxn instruction", function()
 	end)
 
 	describe("DIV", function()
-		it("doesn't divide by zero", function() -- TODO: This is actually fine now. I think.
-			assert.has_error(function()
-				run_program({
-					0x80,
-					0x40,
-					0x80,
-					0x00,
-					0x1b,
-				})
-			end)
+		it("divides by zero", function()
+			run_program({
+				0x80,
+				0x40,
+				0x80,
+				0x00,
+				0x1b,
+			})
+
+			assert.are.equal(0x00, PS())
 		end)
 
 		it("divides cleanly by 2", function()
@@ -1049,6 +1049,7 @@ describe("the uxn instruction", function()
 
 	pending("LDA", function() end)
 
+	-- TODO: This needs to work wrapped across RAM to pass the next section of the opcode test.
 	pending("STA", function() end)
 
 	describe("LDR", function()

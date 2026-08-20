@@ -601,8 +601,11 @@ local opTable = {
 	function(self, k, r, s)
 		local b = self:pop(k, r, s)
 		local a = self:pop(k, r, s)
-		assert(b ~= 0, "Can't divide by zero!")
-		self:push(math.floor(a / b), k, r, s)
+		if b == 0 then
+			self:push(0, k, r, s)
+		else
+			self:push(math.floor(a / b), k, r, s)
+		end
 	end,
 
 	-- 0x1c AND
