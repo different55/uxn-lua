@@ -54,8 +54,8 @@ function Stack:len()
 end
 
 function Stack:debug()
-	local t = { band(self.head - 8, 0xff) > 0 and " " or "|" } -- TODO: Not sure this line is entirely correct.
-	for i = self.head - 8, self.head do
+	local t = { band(self.head - 8, 0xff) > 0 and " " or "|" }
+	for i = self.head - 7, self.head do
 		t[#t + 1] = bit.tohex(self[band(i, 0xff)], 2) .. ((band(i, 0xff) == 0x00) and "|" or " ")
 	end
 	t[#t + 1] = "<" .. self.head .. "\n"
