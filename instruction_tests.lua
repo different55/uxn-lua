@@ -933,11 +933,6 @@ describe("the uxn instruction", function()
 
 	describe("LDZ", function()
 		before_each(function()
-			-- Initialize the zero page to avoid uninitialized errors
-			for i = 0x00, 0xff do
-				memory[i] = 0
-			end
-
 			-- Boundary conditions
 			memory[0x00] = 0x12
 			memory[0x01] = 0x34
@@ -1047,10 +1042,42 @@ describe("the uxn instruction", function()
 		end)
 	end)
 
-	pending("LDA", function() end)
+	describe("LDA", function()
+		it("loads absolute addresses", function()
+			run_program({
+				0xa0,
+				0x01,
+				0x03, -- LIT 0103
+				0x14, -- LDA
+			})
 
-	-- TODO: This needs to work wrapped across RAM to pass the next section of the opcode test.
-	pending("STA", function() end)
+			assert.are.equal(0x14, PS())
+		end)
+
+		it("can wrap around RAM", function()
+			run_program({
+				0xa0,
+				0x12,
+				0x34, -- LIT 1234
+				0xa0,
+				0xff,
+				0xff, -- LIT ffff
+				0x35, -- STA2
+				0xa0,
+				0x00,
+				0x00, -- LIT 0000
+				0x14, -- LDA
+				0xa0,
+				0xff,
+				0xff, -- LIT ffff
+				0x14, -- LDA
+			})
+			assert.are.equal(0x12, PS())
+			assert.are.equal(0x34, PS(-1))
+		end)
+	end)
+
+	describe("STA", function() end)
 
 	describe("LDR", function()
 		it("loads positive offsets", function()

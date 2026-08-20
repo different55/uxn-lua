@@ -65,11 +65,12 @@ end
 local Memory = {
 	__index = function(self, k)
 		if type(k) == "number" then
-			-- Uninitialized memory should be randomized for robust testing
-			if self.ERROR_ON_UNINITIALIZED_READ then
-				error("READ UNINITIALIZED MEMORY @ " .. bit.tohex(k))
-			end
-			return 0 --love.math.random(255)
+			return rawget(self, band(k, 0xffff)) or 0
+		end
+	end,
+	__newindex = function(self, k, v)
+		if type(k) == "number" then
+			rawset(self, band(k, 0xffff), v)
 		end
 	end,
 }
