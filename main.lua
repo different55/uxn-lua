@@ -5,7 +5,7 @@ local band, bor, bxor, bnot = bit.band, bit.bor, bit.bxor, bit.bnot
 local arshift, rshift, lshift = bit.arshift, bit.rshift, bit.lshift
 
 local math = require("math")
-local devices = require("love-devices")
+local devices = require("devices.love-devices")
 
 Device = require("device")
 
