@@ -1,6 +1,6 @@
 return {
 	default = {
 		["suppress-pending"] = true,
-		ROOT = { "instruction_tests.lua" },
+		ROOT = { "tests/instruction_tests.lua" },
 	},
 }
