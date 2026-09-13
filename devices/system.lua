@@ -32,6 +32,25 @@ local function regeneratePalette(self)
 	paletteShader:send("palette", self.palette[0], self.palette[1], self.palette[2], self.palette[3])
 end
 
+local function parseMetadata(self)
+	local metadata = self:readShort(0x06)
+	if self.cpu:peek_byte(metadata) ~= 0x00 then
+		return -- Only metadata version 0x00 is supported.
+	end
+
+	local text = {}
+	for address = metadata + 1, metadata + 0xff do
+		local byte = self.cpu:peek_byte(address)
+		if byte == 0 then
+			break
+		end
+		text[#text + 1] = string.char(byte)
+	end
+
+	local title = table.concat(text):gsub("\n", " / ")
+	love.window.setTitle(title)
+end
+
 system.initColours = false
 
 system:addPort(0x02, true, nil, function(self)
@@ -78,6 +97,7 @@ end)
 system:addPort(0x05, false, function(self)
 	return self.cpu.return_stack:len()
 end)
+system:addPort(0x06, true, nil, parseMetadata)
 system:addPort(0x08, true, nil, regeneratePalette)
 system:addPort(0x0a, true, nil, regeneratePalette)
 system:addPort(0x0c, true, nil, regeneratePalette)
