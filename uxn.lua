@@ -53,6 +53,10 @@ function Stack:len()
 	return self.head
 end
 
+function Stack:setlen(index)
+	self.head = band(index, 0xff)
+end
+
 function Stack:debug()
 	local t = { band(self.head - 8, 0xff) > 0 and " " or "|" }
 	for i = self.head - 7, self.head do
